@@ -1,0 +1,38 @@
+{:linters {:unresolved-symbol {:exclude [(clojure.test/is [http-success?
+                                                           http-created?
+                                                           http-no-content?
+                                                           http-bad-request?
+                                                           http-not-found?
+                                                           http-unauthorized?
+                                                           http-forbidden?
+                                                           http-teapot?
+                                                           http-unprocessable?
+                                                           http-redirect-to?
+                                                           valid?
+                                                           invalid?
+                                                           comparable?
+                                                           conformant?
+                                                           url-like?
+                                                           seq-of-maps-like?
+                                                           seq-containing-model?
+                                                           seq-excluding-model?
+                                                           seq-containing-value?
+                                                           seq-excluding-value?
+                                                           seq-with-map-like?
+                                                           mime-msg-containing?
+                                                           mime-msg-not-containing?
+                                                           called?
+                                                           logged?
+                                                           not-called?
+                                                           same-date?])
+                                         (cljs.test/is [called?
+                                                        comparable?
+                                                        seq-of-maps-like?])
+                                         (dgknght.app-lib.test/with-mail-capture [mailbox])
+                                         (dgknght.app-lib.web-mocks/with-web-mocks [calls])]}
+           :unresolved-var {:exclude [dgknght.app-lib.test-assertions/seq-of-maps-like?
+                                      dgknght.app-lib.test-assertions/same-date?]}
+           :unused-namespace {:exclude [clj-http.core ; clj-http and cljs-http are required for the web-mocks macros to work, which are defined in app-lib
+                                        cljs-http.client]}
+           :unresolved-namespace {:exclude [clojure.pprint]}
+           :namespace-name-mismatch {:level :off}}}

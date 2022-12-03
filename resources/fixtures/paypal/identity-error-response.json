@@ -1,0 +1,23 @@
+{
+  "error": "INVALID_CLIENT",
+  "error_description": "ERROR_DESCRIPTION",
+  "name": "ERROR_NAME",
+  "message": "Error message.",
+  "debug_id": "debug_ID",
+  "details": [
+    {
+      "field": "field_name",
+      "value": "value_passed",
+      "location": "field_location",
+      "issue": "problem_with_field",
+      "description": "Error description."
+    }
+  ],
+  "links": [
+    {
+      "href": "https://error_documentation_link",
+      "rel": "information_link",
+      "encType": "application/json"
+    }
+  ]
+}
