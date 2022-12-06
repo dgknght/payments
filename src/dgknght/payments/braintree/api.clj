@@ -1,27 +1,21 @@
 (ns dgknght.payments.braintree.api
-  (:require [config.core :refer [env]]
-            [camel-snake-kebab.core :refer [->kebab-case-keyword]])
+  (:require [camel-snake-kebab.core :refer [->kebab-case-keyword]]
+            [dgknght.payments.braintree :refer [config]])
   (:import [com.braintreegateway
             Environment
             BraintreeGateway
             Transaction
             TransactionRequest]))
 
-(def ^:private gateway
-  (when (not-any? (comp empty?
-                        env)
-                  [:braintree-environment
-                   :braintree-merchant-id
-                   :braintree-public-key
-                   :braintree-private-key])
-    (BraintreeGateway.
-      (Environment/parseEnvironment (env :braintree-environment))
-      (env :braintree-merchant-id)
-      (env :braintree-public-key)
-      (env :braintree-private-key))))
+(defn- gateway []
+  (BraintreeGateway.
+    (Environment/parseEnvironment (config :environment))
+    (config :merchant-id)
+    (config :public-key)
+    (config :private-key)))
 
 (defn client-token []
-  (.generate (.clientToken gateway)))
+  (.generate (.clientToken (gateway))))
 
 (defn success?
   [transaction]
@@ -119,5 +113,5 @@
 (defn sale
   [req]
   (->map
-    (.sale (.transaction gateway)
+    (.sale (.transaction (gateway))
            (->TransactionRequest req))))
