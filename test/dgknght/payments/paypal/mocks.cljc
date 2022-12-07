@@ -1,15 +1,21 @@
-(ns dgknght.payments.paypal.mocks)
+(ns dgknght.payments.paypal.mocks
+  (:require [cljs.core :as c]))
+
+(defn register-fn-call
+  [coll fn-key]
+  (fn
+    [& args]
+    (swap! coll update-in [fn-key] (fnil conj []) args)))
 
 (defmacro with-paypal-mocks
   [bindings & body]
   `(let [calls# (atom {})
-         paypal# (js-obj "Buttons" (fn [opts#]
-                                     (println "Buttons")
-                                     (.log js/console opts#)
-                                     (js-obj "test" "this is")
-                                     (js-obj "render" (fn [id#] (println "render " id)))))
+         paypal# (c/js-obj "Buttons"
+                           (fn [opts#]
+                             (c/js-obj "render"
+                                       (register-fn-call calls# :render))))
          f# (fn* [~(first bindings)]
                  ~@body)]
      (set! (.-paypal js/window) paypal#)
      (f# calls#)
-     (js-delete js/window "paypal")))
+     (c/js-delete js/window "paypal")))

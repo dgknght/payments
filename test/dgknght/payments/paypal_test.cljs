@@ -5,10 +5,12 @@
 
 (deftest initialize-the-buttons
   (with-paypal-mocks [calls]
-    (is (= :something
-           (pp/buttons {:element-id "#button-container"
-                        :create-order :add-channel-or-callback-fn
-                        :on-approve :add-channel-or-callback-fn})))
+    (is (not
+          (nil?
+            (pp/buttons {:element-id "#button-container"
+                         :create-order :add-channel-or-callback-fn
+                         :on-approve :add-channel-or-callback-fn})))
+        "The PayPal Buttons instance is returned")
     (let [[c :as cs] (get-in @calls [:render] [])]
       (is (= 1 (count cs))
           "The render method is called once")
