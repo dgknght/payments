@@ -1,5 +1,13 @@
 (ns dgknght.payments.paypal
-  (:require [cljs.core.async :as a]))
+  (:refer-clojure :exclude [js->clj])
+  (:require [cljs.core :as c]
+            [cljs.core.async :as a]
+            [camel-snake-kebab.core :refer [->kebab-case-keyword]]
+            [camel-snake-kebab.extras :refer [transform-keys]]))
+
+(def ^:private js->clj
+  (comp (partial transform-keys ->kebab-case-keyword)
+        c/js->clj))
 
 (defn buttons
   "Create and return an instance that manages
@@ -27,9 +35,7 @@
                                  "onApprove"
                                  (fn [data actions]
                                    (let [c (a/chan 1 on-approve (.-error js/console))]
-                                         (a/go (let [r (a/<! c)]
-                                                 (.log js/console "received from on-approve" r)))
-                                         ; TODO: transform the keys of data as part of the cljification
+                                         (a/go (a/<! c))
                                          (a/go (a/>! c {:data (js->clj data)
                                                         :actions (js->clj actions)}))))))]
     (.render result element-id)))

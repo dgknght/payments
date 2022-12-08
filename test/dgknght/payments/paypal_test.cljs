@@ -43,12 +43,10 @@
                                 "abc123"))
             on-approve (map (fn [{:keys [data]}]
                               ; finalized the order
-
-                              (println (pr-str {::data data}))
-
                               (is (= "abc123" (:order-id data))
                                   "The order ID is passed the on-approve handler")
-                              (done)))]
+                              (done)
+                              data))]
         (pp/buttons {:element-id "#buttons-container"
                      :create-order create-order
                      :on-approve on-approve})

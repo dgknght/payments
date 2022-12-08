@@ -8,7 +8,9 @@
                  [ch.qos.logback/logback-classic "1.2.3"]
                  [cheshire "5.11.0"]
                  [clj-http "3.12.3"]
-                 [com.github.dgknght/app-lib "0.2.7"]]
+                 [camel-snake-kebab "0.4.3"]
+                 [com.github.dgknght/app-lib "0.2.7"
+                  :exclusions [camel-snake-kebab]]]
   :plugins [[lein-cljsbuild "1.1.8"]
             [lein-doo "0.1.11"]]
   :cljsbuild {:builds [{:source-paths ["src"]
