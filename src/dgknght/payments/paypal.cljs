@@ -1,4 +1,5 @@
-(ns dgknght.payments.paypal)
+(ns dgknght.payments.paypal
+  (:require [cljs.core.async :as a]))
 
 (defn buttons
   "Create and return an instance that manages
@@ -7,11 +8,28 @@
   (pp/buttons elem-id
     {:create-order fn-that-initializes-payment
      :on-approve fn-that-finalizes-payment})"
-  [{:keys [element-id _create-order _on-approve] :as args}]
+  [{:keys [element-id create-order on-approve] :as args}]
   {:pre [(:element-id args)
          (:create-order args)
          (:on-approve args)]}
 
   (let [paypal (.-paypal js/window)
-        result (.Buttons paypal (js-obj "one" 1))]
+        result (.Buttons paypal
+                         (js-obj "createOrder"
+                                 (fn [data actions]
+                                   (js/Promise.
+                                     (fn [res rej]
+                                       (let [c (a/chan 1 create-order rej)]
+                                         (a/go (let [r (a/<! c)]
+                                                 (res r)))
+                                         (a/go (a/>! c {:data (js->clj data)
+                                                        :actions (js->clj actions)}))))))
+                                 "onApprove"
+                                 (fn [data actions]
+                                   (let [c (a/chan 1 on-approve (.-error js/console))]
+                                         (a/go (let [r (a/<! c)]
+                                                 (.log js/console "received from on-approve" r)))
+                                         ; TODO: transform the keys of data as part of the cljification
+                                         (a/go (a/>! c {:data (js->clj data)
+                                                        :actions (js->clj actions)}))))))]
     (.render result element-id)))

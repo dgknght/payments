@@ -30,7 +30,7 @@
                                                         seq-of-maps-like?])
                                          (dgknght.app-lib.test/with-mail-capture [mailbox])
                                          (dgknght.app-lib.web-mocks/with-web-mocks [calls])
-                                         (dgknght.payments.paypal.mocks/with-paypal-mocks [calls])]}
+                                         (dgknght.payments.paypal.mocks/with-paypal-mocks [calls controller])]}
            :unresolved-var {:exclude [dgknght.app-lib.test-assertions/seq-of-maps-like?
                                       dgknght.app-lib.test-assertions/same-date?]}
            :unused-namespace {:exclude [clj-http.core ; clj-http and cljs-http are required for the web-mocks macros to work, which are defined in app-lib

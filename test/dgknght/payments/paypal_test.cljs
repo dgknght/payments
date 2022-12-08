@@ -1,11 +1,13 @@
 (ns dgknght.payments.paypal-test
-  (:require [cljs.test :refer [deftest testing is]]
-            [dgknght.payments.paypal.mocks :refer-macros [with-paypal-mocks]]
+  (:require [cljs.test :refer [deftest testing is async]]
+            [dgknght.payments.paypal.mocks
+             :as m
+             :refer-macros [with-paypal-mocks]]
             [dgknght.payments.paypal :as pp]))
 
 (deftest initialize-the-buttons
   (testing "with valid arguments"
-    (with-paypal-mocks [calls]
+    (with-paypal-mocks [calls controller]
       (is (not
             (nil?
               (pp/buttons {:element-id "#button-container"
@@ -31,3 +33,23 @@
                  (pp/buttons {:element-id "#button-container"
                               :create-order :add-channel}))
         "on-approve is required")))
+
+(deftest create-and-finalize-the-payment
+  (async
+    done
+    (with-paypal-mocks [calls controller]
+      (let [create-order (map (fn [_args]
+                                ; Create order and return the ID
+                                "abc123"))
+            on-approve (map (fn [{:keys [data]}]
+                              ; finalized the order
+
+                              (println (pr-str {::data data}))
+
+                              (is (= "abc123" (:order-id data))
+                                  "The order ID is passed the on-approve handler")
+                              (done)))]
+        (pp/buttons {:element-id "#buttons-container"
+                     :create-order create-order
+                     :on-approve on-approve})
+        (m/click controller)))))
