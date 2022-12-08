@@ -9,6 +9,15 @@
   (comp (partial transform-keys ->kebab-case-keyword)
         c/js->clj))
 
+(defn- ->promise
+  [xf args]
+  (js/Promise.
+    (fn [res rej]
+      (let [c (a/chan 1 xf rej)]
+        (a/go (let [r (a/<! c)]
+                (res r)))
+        (a/go (a/>! c args))))))
+
 (defn buttons
   "Create and return an instance that manages
   the PayPal buttons.
@@ -22,20 +31,16 @@
          (:on-approve args)]}
 
   (let [paypal (.-paypal js/window)
-        result (.Buttons paypal
-                         (js-obj "createOrder"
-                                 (fn [data actions]
-                                   (js/Promise.
-                                     (fn [res rej]
-                                       (let [c (a/chan 1 create-order rej)]
-                                         (a/go (let [r (a/<! c)]
-                                                 (res r)))
-                                         (a/go (a/>! c {:data (js->clj data)
-                                                        :actions (js->clj actions)}))))))
-                                 "onApprove"
-                                 (fn [data actions]
-                                   (let [c (a/chan 1 on-approve (.-error js/console))]
-                                         (a/go (a/<! c))
-                                         (a/go (a/>! c {:data (js->clj data)
-                                                        :actions (js->clj actions)}))))))]
-    (.render result element-id)))
+        btns (.Buttons paypal
+                       (js-obj "createOrder"
+                               (fn [data actions]
+                                 (->promise create-order
+                                            {:data (js->clj data)
+                                             :actions (js->clj actions)}))
+                               "onApprove"
+                               (fn [data actions]
+                                 (->promise on-approve
+                                            {:data (js->clj data)
+                                             :actions (js->clj actions)}))))]
+    (.render btns element-id)
+    btns))
