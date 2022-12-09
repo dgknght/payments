@@ -13,10 +13,17 @@
   [xf args]
   (js/Promise.
     (fn [res rej]
-      (let [c (a/chan 1 xf rej)]
-        (a/go (let [r (a/<! c)]
-                (res r)))
-        (a/go (a/>! c args))))))
+      (let [c (a/promise-chan xf rej)
+            yielded? (atom false)]
+        (a/go (a/<! (a/timeout 5000)) ; TODO: make this configurable
+              (when-not @yielded?
+                (a/close! c)))
+        (a/go
+          (let [r (a/<! c)]
+            (reset! yielded? true)
+            (res r)))
+        (a/go
+          (a/>! c args))))))
 
 (defn buttons
   "Create and return an instance that manages
