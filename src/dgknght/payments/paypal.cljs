@@ -15,6 +15,9 @@
     (fn [res rej]
       (let [c (a/promise-chan xf rej)
             yielded? (atom false)]
+        ; In the unit tests, the channel yields the value
+        ; immediately. In the browser, the channel doesn't
+        ; the value until the channel is closed.
         (a/go (a/<! (a/timeout 5000)) ; TODO: make this configurable
               (when-not @yielded?
                 (a/close! c)))
