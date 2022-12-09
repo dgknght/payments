@@ -12,7 +12,8 @@
                  [com.github.dgknght/app-lib "0.2.7"
                   :exclusions [camel-snake-kebab]]]
   :plugins [[lein-cljsbuild "1.1.8"]
-            [lein-doo "0.1.11"]]
+            [lein-doo "0.1.11"]
+            [lein-cloverage "1.2.4"]]
   :cljsbuild {:builds [{:source-paths ["src"]
                         :compiler {:output-to "target/main.js"
                                    :optimizations :whitespace
@@ -25,4 +26,6 @@
                                    :optimizations :none}
                         :jar true}]}
   :doo {:build "test"
-        :alias {:default [:firefox-headless]}})
+        :alias {:default [:firefox-headless]}}
+  :cloverage {:ns-exclude-regex [#"^dgknght.payments.braintree.api"]}
+  )
