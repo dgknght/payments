@@ -17,7 +17,7 @@
             yielded? (atom false)]
         ; In the unit tests, the channel yields the value
         ; immediately. In the browser, the channel doesn't
-        ; the value until the channel is closed.
+        ; yield the value until the channel is closed.
         (a/go (a/<! (a/timeout 5000)) ; TODO: make this configurable
               (when-not @yielded?
                 (a/close! c)))
@@ -40,17 +40,18 @@
          (:create-order args)
          (:on-approve args)]}
 
-  (let [paypal (.-paypal js/window)
-        btns (.Buttons paypal
-                       (js-obj "createOrder"
-                               (fn [data actions]
-                                 (->promise create-order
-                                            {:data (js->clj data)
-                                             :actions (js->clj actions)}))
-                               "onApprove"
-                               (fn [data actions]
-                                 (->promise on-approve
-                                            {:data (js->clj data)
-                                             :actions (js->clj actions)}))))]
-    (.render btns element-id)
-    btns))
+  (if-let [paypal (.-paypal js/window)]
+    (let [btns (.Buttons paypal
+                         (js-obj "createOrder"
+                                 (fn [data actions]
+                                   (->promise create-order
+                                              {:data (js->clj data)
+                                               :actions (js->clj actions)}))
+                                 "onApprove"
+                                 (fn [data actions]
+                                   (->promise on-approve
+                                              {:data (js->clj data)
+                                               :actions (js->clj actions)}))))]
+      (.render btns element-id)
+      btns)
+    (.error js/console "Unable to load the PayPal library.")))

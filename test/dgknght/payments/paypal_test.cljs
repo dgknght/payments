@@ -5,6 +5,24 @@
              :refer-macros [with-paypal-mocks]]
             [dgknght.payments.paypal :as pp]))
 
+(deftest library-not-loaded
+  (let [calls (atom {})
+        f (fn [k & args]
+            (swap! calls update-in [k] (fnil conj []) args))]
+    (with-redefs [js/console (js-obj
+                               "warn" (partial f :warn)
+                               "log" (partial f :log)
+                               "error" (partial f :error))]
+      (pp/buttons {:element-id "#buttons"
+                   :create-order {}
+                   :on-approve {}}))
+    (let [[c :as cs] (:error @calls)]
+      (is (= 1 (count cs))
+          "One error is logged")
+      (is (= ["Unable to load the PayPal library."]
+             c)
+          "A descriptive message is logged"))))
+
 (deftest initialize-the-buttons
   (testing "with valid arguments"
     (with-paypal-mocks [calls controller]
