@@ -2,6 +2,7 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.walk :refer [postwalk]]
             [clojure.tools.logging :as log]
+            [clojure.string :as string]
             [clj-http.client :as http]
             [camel-snake-kebab.core :refer [->kebab-case-keyword
                                             ->snake_case_string
@@ -181,16 +182,26 @@
   (juxt :client-id
         :secret))
 
-(def ^:private default-post-opts
+(def ^:private default-opts
   {:throw-exceptions false
    :coerce :always
    :content-type :json
    :as :json})
 
+(defn- http-get
+  [url opts]
+  (http/with-middleware (concat http/*current-middleware* middleware)
+    (http/get url (merge default-opts opts))))
+
 (defn- http-post
   [url opts]
   (http/with-middleware (concat http/*current-middleware* middleware)
-    (http/post url (merge default-post-opts opts))))
+    (http/post url (merge default-opts opts))))
+
+(defn- http-delete
+  [url opts]
+  (http/with-middleware (concat http/*current-middleware* middleware)
+    (http/delete url (merge default-opts opts))))
 
 (defn- generate-access-token-url []
   (-> (base-uri)
@@ -266,3 +277,29 @@
       (transform-keys ->kebab-case-keyword body)
       (throw (ex-info "Unable to generate the client token with PayPal"
                       {:response body})))))
+
+(defn- web-profiles-url
+  ([] (web-profiles-url nil))
+  ([id]
+   (let [segments (cond-> ["" "v1" "payment-experience" "web-profiles"]
+                    id (conj id))]
+     (-> (base-uri)
+         uri
+         (assoc :path (string/join "/" segments))
+         str))))
+
+(defn web-profiles
+  ([]
+   (:clj-body
+     (http-get (web-profiles-url)
+               {:oauth-token (generate-access-token)})))
+  ([{:keys [add delete]}]
+   (when delete
+     (http-delete (web-profiles-url (or (:id delete)
+                                        delete))
+                  {:oauth-token (generate-access-token)}))
+   (when add
+     (:clj-body
+                 (http-post (web-profiles-url)
+                            {:form-params (jsonify add)
+                             :oauth-token (generate-access-token)})))))

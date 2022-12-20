@@ -1,0 +1,15 @@
+{
+  "id": "XP-RFV4-PVD8-AGHJ-8E5J",
+  "name": "new-profile",
+  "temporary": false,
+  "presentation": {
+    "logo_image": "https://myapp.com/logo.png"
+  },
+  "input_fields": {
+    "no_shipping": 1
+  },
+  "flow_config": {
+    "landing_page_type": "billing",
+    "bank_txn_pending_url": "https://myapp.com/pending"
+  }
+}

@@ -29,7 +29,10 @@
           (a/>! c args))))))
 
 (defn- buttons-config
-  [{:keys [create-order on-approve on-cancel]}]
+  [{:keys [create-order
+           on-approve
+           on-cancel
+           style]}]
   (clj->js
     (cond-> {"createOrder" (fn [data actions]
                              (->promise create-order
@@ -42,7 +45,8 @@
       on-cancel (assoc
                   "onCancel" (fn [data]
                                (->promise on-cancel
-                                          {:data (js->clj data)}))))))
+                                          {:data (js->clj data)})))
+      style (assoc "style" style))))
 
 (defn buttons
   "Create and return an instance that manages

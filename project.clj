@@ -1,4 +1,4 @@
-(defproject com.github.dgknght/payments "0.1.3"
+(defproject com.github.dgknght/payments "0.1.4"
   :description "Library for interacting with various payment providers"
   :url "http://github.com/dgknght/payments"
   :license {:name "Eclipse Public License"
@@ -27,4 +27,5 @@
                         :jar true}]}
   :doo {:build "test"
         :alias {:default [:firefox-headless]}}
-  :cloverage {:ns-exclude-regex [#"^dgknght.payments.braintree.api"]})
+  :cloverage {:ns-exclude-regex [#"dgknght.payments.braintree"
+                                 #"dgknght.payments.braintree.api"]})

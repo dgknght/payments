@@ -10,16 +10,18 @@
   (:import java.io.FileInputStream))
 
 (defn- mock
+  ([] (mock nil 204))
   ([k] (mock k 201))
   ([k status]
    (fn [& _]
      {:status status
-      :body (FileInputStream.
-              (format "resources/fixtures/paypal/%s-response.json"
-                      (name k)))})))
+      :body (when k
+              (FileInputStream.
+                (format "resources/fixtures/paypal/%s-response.json"
+                        (name k))))})))
 
 (def create-order-mocks
-  {#"v1\/oauth2/token"      (mock :generate-access-token)
+  {#"v1\/oauth2\/token"      (mock :generate-access-token)
    #"v2\/checkout\/orders$" (mock :create-order)})
 
 (def expected-order-req-body
@@ -184,3 +186,86 @@
                         "Content-Type" "application/json"}
                        (:headers c2))
           "The client token is fetched with correct headers"))))
+
+(def profile-mocks
+  {#"v1\/oauth2\/token"                    (mock :generate-access-token)
+   #"v1\/payment-experience\/web-profiles" (mock :web-profiles)})
+
+(deftest view-web-profiles
+  (with-web-mocks [calls] profile-mocks
+    (let [profiles (pp/web-profiles)
+          [_ c2 :as cs] @calls]
+      (is (= 2 (count cs))
+          "The PayPal API is called one time")
+      (is (comparable? {:url "https://api-m.sandbox.paypal.com/v1/payment-experience/web-profiles"
+                        :request-method :get}
+             c2)
+          "The PayPal API is called with the correct options")
+      (is (= [{:id "XP-GCUV-X35G-HNEY-5MJY"
+               :name "exampleProfile"
+               :flow-config {:landing-page-type "billing"
+                             :bank-txn-pending-url "https://example.com/flow_config/"}
+               :input-fields {:no-shipping 1
+                              :address-override 1}
+               :presentation {:logo-image "https://example.com/logo_image/"}}
+              {:id "XP-A88A-LYLW-8Y3X-E5ER"
+               :name "exampleProfile"
+               :flow-config {:landing-page-type "billing"
+                             :bank-txn-pending-url "https://example.com/flow_config/"}
+               :input-fields {:no-shipping 1
+                              :address-override 1}
+               :presentation {:logo-image "https://example.com/logo_image/"}}]
+             profiles)
+          "The profiles are returned"))))
+
+(def ^:private new-web-profile
+  {:name "new-profile"
+   :flow-config {:landing-page-type "billing"
+                 :bank-txn-pending-url "https://myapp.com/pending"}
+   :input-fields {:no-shipping 1}
+   :presentation {:logo-image "https://myapp.com/logo.png"}})
+
+(def add-profile-mocks
+  {#"v1\/oauth2\/token"                    (mock :generate-access-token)
+   #"v1\/payment-experience\/web-profiles" (mock :create-web-profile)})
+
+(deftest add-a-web-profile
+  (with-web-mocks [calls] add-profile-mocks
+    (let [res (pp/web-profiles {:add new-web-profile})
+          [_ c2 :as cs] @calls]
+      (is (= 2 (count cs))
+          "The PayPal API is called twice")
+      (is (comparable? {:url "https://api-m.sandbox.paypal.com/v1/payment-experience/web-profiles"
+                        :request-method :post}
+                       c2)
+          "The PayPal API is called with the correct options")
+      (is (= (assoc new-web-profile
+                    :id "XP-RFV4-PVD8-AGHJ-8E5J"
+                    :temporary false)
+             res)
+          "The correct data is returned"))))
+
+(def ^:private existing-web-profile
+  {:id "XP-RFV4-PVD8-AGHJ-8E5J"
+   :name "existing-profile"
+   :flow-config {:landing-page-type "billing"
+                 :bank-txn-pending-url "https://myapp.com/pending"}
+   :input-fields {:no-shipping 1}
+   :presentation {:logo-image "https://myapp.com/logo.png"}})
+
+(def delete-profile-mocks
+  {#"v1\/oauth2\/token"                        (mock :generate-access-token)
+   #"v1\/payment-experience\/web-profiles\/.+" (mock)})
+
+(deftest delete-a-web-profile
+  (with-web-mocks [calls] delete-profile-mocks
+    (let [res (pp/web-profiles {:delete existing-web-profile})
+          [_ c2 :as cs] @calls]
+      (is (= 2 (count cs))
+          "The PayPal API is called twice")
+      (is (comparable? {:url "https://api-m.sandbox.paypal.com/v1/payment-experience/web-profiles/XP-RFV4-PVD8-AGHJ-8E5J"
+                        :request-method :delete}
+                       c2)
+          "The PayPal API is called with the correct options")
+      (is (nil?  res)
+          "Nothing is returned"))))
