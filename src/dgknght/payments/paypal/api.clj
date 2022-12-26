@@ -221,11 +221,15 @@
       (throw (ex-info "Unable to acquire an access token"
                       {:response clj-body})))))
 
-(defn- create-order-url []
+(defn- build-url
+  [& segments]
   (-> (base-uri)
       uri
-      (assoc :path "/v2/checkout/orders")
+      (assoc :path (string/join "/" (cons "" segments)))
       str))
+
+(defn- create-order-url []
+  (build-url "v2" "checkout" "orders"))
 
 (defn create-order
   "Create a PayPal order
@@ -247,10 +251,7 @@
 
 (defn- capture-payment-url
   [order-id]
-  (-> (base-uri)
-      uri
-      (assoc :path (str "/v2/checkout/orders/" order-id "/capture"))
-      str))
+  (build-url "v2" "checkout" "orders" order-id "capture"))
 
 (defn capture-payment
   [order-id]
@@ -264,10 +265,7 @@
                        :response clj-body})))))
 
 (defn- gen-client-token-url []
-  (-> (base-uri)
-      uri
-      (assoc :path "/v1/identity/generate-token")
-      str))
+  (build-url "v1" "identity" "generate-token"))
 
 (defn generate-client-token []
   (let [{:keys [body] :as res}
@@ -281,12 +279,8 @@
 (defn- web-profiles-url
   ([] (web-profiles-url nil))
   ([id]
-   (let [segments (cond-> ["" "v1" "payment-experience" "web-profiles"]
-                    id (conj id))]
-     (-> (base-uri)
-         uri
-         (assoc :path (string/join "/" segments))
-         str))))
+   (apply build-url (cond-> ["v1" "payment-experience" "web-profiles"]
+                      id (conj id)))))
 
 (defn web-profiles
   ([]
@@ -303,3 +297,12 @@
                  (http-post (web-profiles-url)
                             {:form-params (jsonify add)
                              :oauth-token (generate-access-token)})))))
+
+(defn- create-subscription-url []
+  (build-url "v1" "billing" "subscriptions"))
+
+(defn create-subscription
+  [sub]
+  (:clj-body (http-post (create-subscription-url)
+                        {:form-params (jsonify sub)
+                         :oauth-token (generate-access-token) })))
