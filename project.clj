@@ -1,4 +1,4 @@
-(defproject com.github.dgknght/payments "0.1.4"
+(defproject com.github.dgknght/payments "0.1.5-SNAPSHOT"
   :description "Library for interacting with various payment providers"
   :url "http://github.com/dgknght/payments"
   :license {:name "Eclipse Public License"
