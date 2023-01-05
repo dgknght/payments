@@ -30,18 +30,26 @@
 
 (defn- buttons-config
   [{:keys [create-order
+           create-subscription
            on-approve
            on-cancel
            style]}]
   (clj->js
-    (cond-> {"createOrder" (fn [data actions]
-                             (->promise create-order
-                                        {:data (js->clj data)
-                                         :actions (js->clj actions)}))
-             "onApprove" (fn [data actions]
+    (cond-> {"onApprove" (fn [data actions]
                            (->promise on-approve
                                       {:data (js->clj data)
                                        :actions (js->clj actions)}))}
+      create-order (assoc "createOrder"
+                          (fn [data actions]
+                            (->promise create-order
+                                       {:data (js->clj data)
+                                        :actions (js->clj actions)})))
+      create-subscription (assoc
+                            "createSubscription"
+                            (fn [data actions]
+                              (->promise create-subscription
+                                         {:data (js->clj data)
+                                          :actions (js->clj actions)})))
       on-cancel (assoc
                   "onCancel" (fn [data]
                                (->promise on-cancel
@@ -57,7 +65,9 @@
      :on-approve fn-that-finalizes-payment})"
   [{:keys [element-id] :as args}]
   {:pre [(:element-id args)
-         (:create-order args)
+         (or
+           (:create-order args)
+           (:create-subscription args))
          (:on-approve args)]}
 
   (if-let [paypal (.-paypal js/window)]

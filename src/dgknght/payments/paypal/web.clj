@@ -16,6 +16,9 @@
        :client-id (config :client-id)
        :currency "USD"}
 
+      (config :vault?)
+      (assoc :vault true)
+
       (config :include-locale?)
       (assoc :locale "en_US"
              :buyer-country "US")
