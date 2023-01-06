@@ -33,12 +33,12 @@
                "The src points to the correct URL"))))))
 
 (deftest create-script-tags
-  (let [[_tag attr :as elem] (pp/script-tags {:components #{:buttons :hosted-fields}
-                                              :client-id "paypal-client-id"
-                                              :data {:client-token "specified-client-token"}
-                                              :locale "en_US"
-                                              :currency "USD"
-                                              :buyer-country "US"})]
+  (let [[_tag attr :as elem] #_{:clj-kondo/ignore [:invalid-arity]} (pp/script-tags {:components #{:buttons :hosted-fields}
+                                                                                     :client-id "paypal-client-id"
+                                                                                     :data {:client-token "specified-client-token"}
+                                                                                     :locale "en_US"
+                                                                                     :currency "USD"
+                                                                                     :buyer-country "US"})]
     (is (= "specified-client-token"
            (:data-client-token attr))
         "The :data values are added as element attributes")

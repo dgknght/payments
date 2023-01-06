@@ -91,7 +91,9 @@
   [opts]
   (-> base-uri
       uri
-      (assoc :query (query-string opts))
+      (assoc :query
+             #_{:clj-kondo/ignore [:invalid-arity]}
+             (query-string opts))
       str))
 
 #?(:clj
@@ -102,9 +104,11 @@
          (update-in [:data] (fnil merge {}) (pp/generate-client-token))))))
 
 (defn script-tags
-  #?(:clj ([] (script-tags (config-opts))))
+  #?(:clj ([]
+           #_{:clj-kondo/ignore [:invalid-arity]}
+           (script-tags (config-opts))))
   ([opts]
-   [:script (merge {:src (script-url (dissoc opts :data))}
+   [:script (merge {:src #_{:clj-kondo/ignore [:invalid-arity]} (script-url (dissoc opts :data))}
                    (postwalk
                      (fn [v]
                        (if (keyword? v)
