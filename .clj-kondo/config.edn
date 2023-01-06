@@ -27,7 +27,10 @@
                                                            same-date?])
                                          (cljs.test/is [called?
                                                         comparable?
-                                                        seq-of-maps-like?])
+                                                        seq-of-maps-like?
+                                                        url-like?
+                                                        conformant?
+                                                        ])
                                          (dgknght.app-lib.test/with-mail-capture [mailbox])
                                          (dgknght.app-lib.web-mocks/with-web-mocks [calls])
                                          (dgknght.payments.paypal.mocks/with-paypal-mocks [calls controller])]}

@@ -65,9 +65,7 @@
      :on-approve fn-that-finalizes-payment})"
   [{:keys [element-id] :as args}]
   {:pre [(:element-id args)
-         (or
-           (:create-order args)
-           (:create-subscription args))
+         (:create-order args)
          (:on-approve args)]}
 
   (if-let [paypal (.-paypal js/window)]
