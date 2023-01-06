@@ -9,7 +9,7 @@
             #?(:clj [dgknght.payments.paypal.api :as pp])))
 
 (s/def ::client-id       string?)
-(s/def ::buy-country     #{"US"
+(s/def ::buyer-country   #{"US"
                            "CA"
                            "GB"
                            "DE"
@@ -20,25 +20,36 @@
                            :hosted-fields
                            :funding-eligibility
                            :messages})
-(s/def ::components (s/coll-of ::component))
+(s/def ::components      (s/coll-of ::component))
 (s/def ::currency        #{"USD"
                            "CAD"
                            "EUR"})
 (s/def ::debug           boolean?)
-(s/def ::disable-funding #{"card"
-                           "credit"
-                           "bancontact"})
-(s/def ::enable-funding  #{"venmo"
-                           "paylater"})
+(def funding-types
+  #{"card"
+    "credit"
+    "paylater"
+    "bancontact"
+    "blik"
+    "eps"
+    "giropay"
+    "ideal"
+    "mercadopago"
+    "mybank"
+    "p"24
+    "sepa"
+    "sofort"
+    "venmo"})
+(s/def ::disable-funding funding-types)
+(s/def ::enable-funding  funding-types)
 (s/def ::integration-date (s/and string?
-                                 #(re-matches #"\A\d{4}-\d{2}-\d{2}\z " %)))
+                                 (partial re-matches #"\A\d{4}-\d{2}-\d{2}\z")))
 (s/def ::intent           #{:capture
                             :authorize
                             :subscription
                             :tokenize})
-(s/def ::locale           #{"en_US"
-                            "fr_FR"
-                            "de_DE"})
+(s/def ::locale           (s/and string?
+                                 (partial re-matches #"\A[a-z]{2}_[A-Z]{2}\z")))
 (s/def ::merchant-id      string?)
 (s/def ::vault            boolean?)
 
@@ -59,10 +70,7 @@
 (def ^:private base-uri "https://www.paypal.com/sdk/js")
 
 (def default-opts
-  {:components #{:buttons}
-   :currency "USD"
-   :local "en_US"
-   :buyer-country "US"})
+  {:components #{:buttons}})
 
 (defn- set-vault
   [{:keys [intent] :as m}]
@@ -75,8 +83,7 @@
   (if components
     (assoc m :components (->> components
                               (map name)
-                              (string/join ",")
-                              ))
+                              (string/join ",")))
     m))
 
 (defn- query-string
