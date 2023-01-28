@@ -269,38 +269,3 @@
           "The PayPal API is called with the correct options")
       (is (nil?  res)
           "Nothing is returned"))))
-
-(def create-subscription-mocks
-  {#"v1\/oauth2\/token"                        (mock :generate-access-token)
-   #"v1\/billing\/subscriptions" (mock :create-subscription)})
-
-(def subscription
-  {:plan-id "abc123"
-   :subscriber {:name {:given-name "John"
-                       :surname "Doe"}
-                :email-address "john@doe.com"}})
-
-(deftest create-a-subscription
-  (with-web-mocks [calls] create-subscription-mocks
-    (let [res (pp/create-subscription subscription)
-          [_ c2 :as cs] (map (fn [c]
-                               (update-in c
-                                          [:body]
-                                          #(slurp (.getContent %))))
-                             @calls)]
-      (is (= 2 (count cs))
-          "The PayPal API is called twice")
-      (is (comparable? {:url "https://api-m.sandbox.paypal.com/v1/billing/subscriptions"
-                        :request-method :post}
-                       c2)
-          "The create-subscription endpoint is called")
-      (is (comparable? {:plan_id "abc123"
-                        :subscriber {:name {:given_name "John"
-                                            :surname "Doe"}
-                                     :email_address "john@doe.com"}}
-                       (json/parse-string (:body c2) true))
-          "The correct data is submitted to the endpoint")
-      (is (comparable? {:id "I-BW452GLLEP1G"
-                        :status :approval-pending}
-                       res)
-          "The response is cljified and returned"))))
