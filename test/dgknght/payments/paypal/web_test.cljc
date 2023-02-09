@@ -19,6 +19,7 @@
                    (constantly {:client-token "fetched-client-token"})]
        (with-config {:paypal {:components #{:buttons :hosted-fields}
                               :client-id "paypal-client-id"
+                              :secret "this-is-a-secret"
                               :locale "en_US"
                               :currency "USD"
                               :buyer-country "US"}}

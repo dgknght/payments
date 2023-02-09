@@ -111,14 +111,32 @@
          (update-in [:data] (fnil merge {}) (pp/generate-client-token))))))
 
 (defn script-tags
-  #?(:clj ([]
-           #_{:clj-kondo/ignore [:invalid-arity]}
-           (script-tags (config-opts))))
+  ([]
+   #?(:clj
+      #_{:clj-kondo/ignore [:invalid-arity]}
+      (script-tags (config-opts))
+      :cljs (script-tags {})) )
   ([opts]
-   [:script (merge {:src #_{:clj-kondo/ignore [:invalid-arity]} (script-url (dissoc opts :data))}
-                   (postwalk
-                     (fn [v]
-                       (if (keyword? v)
-                         (keyword (str "data-" (name v)))
-                         v))
-                     (:data opts)))]))
+   (let [options (-> (dissoc opts :data)
+                     (merge opts)
+                     (select-keys [:client-id
+                                   :buyer-country
+                                   :commit
+                                   :components
+                                   :currency
+                                   :debug
+                                   :disable-funding
+                                   :enable-funding
+                                   :integration-date
+                                   :intent
+                                   :locale
+                                   :merchant-id
+                                   :vault]))]
+     [:script (merge {:src #_{:clj-kondo/ignore [:invalid-arity]}
+                      (script-url options)}
+                     (postwalk
+                       (fn [v]
+                         (if (keyword? v)
+                           (keyword (str "data-" (name v)))
+                           v))
+                       (:data opts)))])))
