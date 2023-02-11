@@ -3,4 +3,6 @@
 
 (defn config
   [& ks]
-  (get-in *config* (cons :paypal ks)))
+  (if (seq ks)
+    (get-in *config* (cons :paypal ks))
+    (:paypal *config*)))
