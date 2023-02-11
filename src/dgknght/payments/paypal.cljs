@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [js->clj])
   (:require [cljs.core :as c]
             [cljs.core.async :as a]
+            [cljs.spec.alpha :as s]
             [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [camel-snake-kebab.extras :refer [transform-keys]]))
 
@@ -56,6 +57,53 @@
                                           {:data (js->clj data)})))
       style (assoc "style" style))))
 
+(s/def ::element-id string?)
+(s/def ::on-approve fn?)
+(s/def ::on-cancel fn?)
+(s/def ::on-init fn?)
+(s/def ::on-click fn?)
+(s/def ::on-shipping-change fn?)
+(s/def ::create-order fn?)
+(s/def ::create-subscription fn?)
+(s/def ::layout #{"vertical" "horizontal"})
+(s/def ::color #{"gold" "blue" "silver" "white" "black"})
+(s/def ::shape #{"rect" "pill"})
+(s/def ::height (s/and integer?
+                       #(<= 25 % 55)))
+(s/def ::label #{"paypal"
+                 "checkout"
+                 "buynow"
+                 "pay"
+                 "installment"})
+(s/def ::tagline boolean?)
+(s/def ::style (s/keys :opt-un [::layout
+                                ::color
+                                ::shape
+                                ::height
+                                ::label]))
+(s/def ::on-error fn?)
+(s/def ::buttons-options
+  (s/and
+    (s/keys :req-un [::element-id
+                     ::on-approve]
+            :opt-un [::create-order
+                     ::create-subscription
+                     ::on-cancel
+                     ::on-init
+                     ::on-click
+                     ::on-shipping-change])
+    #(or (:create-order %)
+         (:create-subscription %))
+    #(not
+       (and (:create-order %)
+            (:create-subscription %)))))
+
+(defn- valid-buttons-args?
+  [args]
+  (if-let [exp (s/explain-data ::buttons-options args)]
+    (.error js/console exp)
+    true))
+
 (defn buttons
   "Create and return an instance that manages
   the PayPal buttons.
@@ -64,9 +112,7 @@
     {:create-order fn-that-initializes-payment
      :on-approve fn-that-finalizes-payment})"
   [{:keys [element-id] :as args}]
-  {:pre [(:element-id args)
-         (:create-order args)
-         (:on-approve args)]}
+  {:pre [(valid-buttons-args? args)]}
 
   (if-let [paypal (.-paypal js/window)]
     (let [btns (.Buttons paypal (buttons-config args))]
