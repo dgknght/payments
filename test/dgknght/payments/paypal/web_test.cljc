@@ -13,16 +13,20 @@
 (s/def ::script-elem (s/tuple #{:script}
                               ::script-attr))
 
+(def paypal-config
+  {:components #{:buttons :hosted-fields}
+   :client-id "paypal-client-id"
+   :not-a-valid-key "doesn't matter" ; not used by anything
+   :secret "this-is-a-secret" ; valid, but ommited from the query string
+   :locale "en_US"
+   :currency "USD"
+   :buyer-country "US"})
+
 #?(:clj
    (deftest create-script-tags-server-side
      (with-redefs [api/generate-client-token
                    (constantly {:client-token "fetched-client-token"})]
-       (with-config {:paypal {:components #{:buttons :hosted-fields}
-                              :client-id "paypal-client-id"
-                              :secret "this-is-a-secret"
-                              :locale "en_US"
-                              :currency "USD"
-                              :buyer-country "US"}}
+       (with-config {:paypal paypal-config}
          (let [[_tag attr :as elem] (pp/script-tags)]
            (is (= "fetched-client-token"
                   (:data-client-token attr))
@@ -34,12 +38,10 @@
                "The src points to the correct URL"))))))
 
 (deftest create-script-tags
-  (let [[_tag attr :as elem] #_{:clj-kondo/ignore [:invalid-arity]} (pp/script-tags {:components #{:buttons :hosted-fields}
-                                                                                     :client-id "paypal-client-id"
-                                                                                     :data {:client-token "specified-client-token"}
-                                                                                     :locale "en_US"
-                                                                                     :currency "USD"
-                                                                                     :buyer-country "US"})]
+  (let [[_tag attr :as elem]
+        #_{:clj-kondo/ignore [:invalid-arity]}
+        (pp/script-tags (assoc paypal-config
+                               :data {:client-token "specified-client-token"}))]
     (is (= "specified-client-token"
            (:data-client-token attr))
         "The :data values are added as element attributes")

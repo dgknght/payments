@@ -89,8 +89,10 @@
 (defn- query-string
   [opts]
   {:pre [(s/valid? ::options opts)]}
+
   (-> opts
       set-vault
+      (update-in [:intent] name)
       format-components
       map->query-string))
 
@@ -107,36 +109,49 @@
    (defn- config-opts []
      (let [{:keys [components] :as cfg} (config)]
        (cond-> cfg
-         (components :hosted-fields)
+         (:hosted-fields components)
          (update-in [:data] (fnil merge {}) (pp/generate-client-token))))))
+
+(def ^:private valid-option-keys
+  [:client-id
+   :buyer-country
+   :commit
+   :components
+   :currency
+   :debug
+   :disable-funding
+   :enable-funding
+   :integration-date
+   :intent
+   :locale
+   :merchant-id
+   :vault])
+
+(defn- append-key-prefix
+  [m prefix]
+  (postwalk
+    (fn [v]
+      (if (keyword? v)
+        (keyword (str prefix (name v)))
+        v))
+    m))
+
+(defn- script-tags*
+  [opts]
+  (let [options (-> (dissoc opts :data)
+                    (merge opts)
+                    (select-keys valid-option-keys))]
+    [:script (merge {:src #_{:clj-kondo/ignore [:invalid-arity]}
+                     (script-url options)}
+                    (append-key-prefix (:data opts) "data-"))]))
+
+
 
 (defn script-tags
   ([]
-   #?(:clj
-      #_{:clj-kondo/ignore [:invalid-arity]}
-      (script-tags (config-opts))
-      :cljs (script-tags {})) )
-  ([opts]
-   (let [options (-> (dissoc opts :data)
-                     (merge opts)
-                     (select-keys [:client-id
-                                   :buyer-country
-                                   :commit
-                                   :components
-                                   :currency
-                                   :debug
-                                   :disable-funding
-                                   :enable-funding
-                                   :integration-date
-                                   :intent
-                                   :locale
-                                   :merchant-id
-                                   :vault]))]
-     [:script (merge {:src #_{:clj-kondo/ignore [:invalid-arity]}
-                      (script-url options)}
-                     (postwalk
-                       (fn [v]
-                         (if (keyword? v)
-                           (keyword (str "data-" (name v)))
-                           v))
-                       (:data opts)))])))
+   #_{:clj-kondo/ignore [:invalid-arity]}
+   (script-tags {}))
+  #?(:clj ([opts]
+           (script-tags* (merge (config-opts) opts)))
+     :cljs ([opts]
+            (script-tags* opts))))
