@@ -14,8 +14,8 @@
                                "log" (partial f :log)
                                "error" (partial f :error))]
       (pp/buttons {:element-id "#buttons"
-                   :create-order {}
-                   :on-approve {}}))
+                   :create-order (fn [& _])
+                   :on-approve (fn [& _])}))
     (let [[c :as cs] (:error @calls)]
       (is (= 1 (count cs))
           "One error is logged")
@@ -29,8 +29,8 @@
       (is (not
             (nil?
               (pp/buttons {:element-id "#button-container"
-                           :create-order :add-channel-or-callback-fn
-                           :on-approve :add-channel-or-callback-fn})))
+                           :create-order (fn [& _])
+                           :on-approve (fn [& _])})))
           "The PayPal Buttons instance is returned")
       (let [[c :as cs] (get-in @calls [:render] [])]
         (is (= 1 (count cs))
@@ -39,18 +39,48 @@
                c)
             "The render method is called with the ID of the element where the buttons are to be rendered"))))
   (testing "with invalid arguments"
-    (is (thrown-with-msg? js/Error #"Assert failed: \(:element-id args\)"
-                 (pp/buttons {:create-order :add-channel
-                              :on-approve :add-channel}))
-        "element-id is required")
-    (is (thrown-with-msg? js/Error #"Assert failed: \(:create-order args\)"
-                 (pp/buttons {:element-id "#button-container"
-                              :on-approve :add-channel}))
-        "create-order is required")
-    (is (thrown-with-msg? js/Error #"Assert failed: \(:on-approve args\)"
-                 (pp/buttons {:element-id "#button-container"
-                              :create-order :add-channel}))
-        "on-approve is required")))
+    (let [calls (atom {})
+          f (fn [k & args]
+              (swap! calls update-in [k] (fnil conj []) args))]
+      (with-redefs [js/console (js-obj
+                                 "warn" (partial f :warn)
+                                 "log" (partial f :log)
+                                 "error" (partial f :error))]
+        (is (thrown-with-msg? js/Error #"Assert failed: \(valid-buttons-args\? args\)"
+                              (pp/buttons {:create-order :add-channel
+                                           :on-approve :add-channel}))
+            "element-id is required")
+        (let [cs (get-in @calls [:error] [])]
+          (is (= 1 (count cs))
+              "One error is logged"))))
+    (let [calls (atom {})
+          f (fn [k & args]
+              (swap! calls update-in [k] (fnil conj []) args))]
+      (with-redefs [js/console (js-obj
+                                 "warn" (partial f :warn)
+                                 "log" (partial f :log)
+                                 "error" (partial f :error))]
+        (is (thrown-with-msg? js/Error #"Assert failed: \(valid-buttons-args\? args\)"
+                              (pp/buttons {:element-id "#button-container"
+                                           :on-approve :add-channel}))
+            "create-order is required")
+        (let [cs (get-in @calls [:error] [])]
+          (is (= 1 (count cs))
+              "One error is logged"))))
+    (let [calls (atom {})
+          f (fn [k & args]
+              (swap! calls update-in [k] (fnil conj []) args))]
+      (with-redefs [js/console (js-obj
+                                 "warn" (partial f :warn)
+                                 "log" (partial f :log)
+                                 "error" (partial f :error))]
+        (is (thrown-with-msg? js/Error #"Assert failed: \(valid-buttons-args\? args\)"
+                              (pp/buttons {:element-id "#button-container"
+                                           :create-order :add-channel}))
+            "on-approve is required")
+        (let [cs (get-in @calls [:error] [])]
+          (is (= 1 (count cs))
+              "One error is logged"))))))
 
 (deftest create-and-finalize-the-payment
   (async

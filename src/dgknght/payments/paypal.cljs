@@ -101,7 +101,9 @@
 (defn- valid-buttons-args?
   [args]
   (if-let [exp (s/explain-data ::buttons-options args)]
-    (.error js/console exp)
+    (do
+      (.error js/console (pr-str exp))
+      false)
     true))
 
 (defn buttons

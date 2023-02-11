@@ -5,6 +5,7 @@
             [clojure.string :as string]
             [lambdaisland.uri :refer [map->query-string
                                       uri]]
+            [dgknght.app-lib.core :refer [update-in-if]]
             #?(:clj [dgknght.payments.paypal :refer [config]])
             #?(:clj [dgknght.payments.paypal.api :as pp])))
 
@@ -92,7 +93,7 @@
 
   (-> opts
       set-vault
-      (update-in [:intent] name)
+      (update-in-if [:intent] name)
       format-components
       map->query-string))
 
