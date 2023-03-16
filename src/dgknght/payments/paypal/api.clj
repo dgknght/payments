@@ -126,9 +126,12 @@
                    ::tax]))
 (s/def ::items (s/coll-of ::item))
 
+(s/def ::soft-descriptor string?)
+
 (s/def ::purchase-unit
   (s/keys :req-un [::amount]
-          :opt-un [::items]))
+          :opt-un [::items
+                   ::soft-descriptor]))
 
 (s/def ::purchase-units (s/coll-of ::purchase-unit))
 

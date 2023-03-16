@@ -34,6 +34,7 @@
                                                       :currency_code "USD"}}}
                      :custom_id "101"
                      :description "Site license"
+                     :soft_descriptor "site-name"
                      :items [{:name "Site license"
                               :quantity "1"
                               :unit_amount {:value "9.99"
@@ -49,6 +50,7 @@
                                           :tax-total 0.66M}}
                      :custom-id "101"
                      :description "Site license"
+                     :soft-descriptor "site-name"
                      :items [{:name "Site license"
                               :quantity "1"
                               :unit-amount 9.99M
