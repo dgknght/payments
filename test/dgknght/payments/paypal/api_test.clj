@@ -22,7 +22,7 @@
 
 (def create-order-mocks
   {#"v1\/oauth2\/token"      (mock :generate-access-token)
-   #"v2\/checkout\/orders$" (mock :create-order)})
+   #"v2\/checkout\/orders$" (mock :capture-payment-success)})
 
 (def expected-order-req-body
   {:intent "CAPTURE"
@@ -67,10 +67,24 @@
   (with-web-mocks [calls] create-order-mocks
     (with-config config
       (let [res (pp/create-order order)]
-        (is (comparable? {:id "5O190127TN364715T"
-                          :status :payer-action-required}
-                         res)
-            "The returned map includes the status and order ID")
+        (is (comparable?
+              {:id "5O190127TN364715T"
+               :status :completed
+               :purchase-units
+               [{:reference-id "d9f80740-38f0-11e8-b467-0ed5f89f718b"
+                 :payments {:captures [{:status :completed
+                                        :amount {:currency-code :usd
+                                                 :value "100.00"}
+                                        :seller-receivable-breakdown
+                                        {:gross-amount {:currency-code :usd
+                                                        :value "100.00"}
+                                         :paypal-fee {:currency-code :usd
+                                                      :value "3.00"}
+                                         :net-amount {:currency-code :usd
+                                                      :value "97.00"}}}]}}]
+               }
+              res)
+            "The returned map includes the status and order ID, and payment breakdown")
         (let [[c1 c2 :as cs] (map (fn [c]
                                     (update-in c
                                                [:body]
