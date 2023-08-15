@@ -13,3 +13,4 @@ pom.xml.asc
 /log
 /out
 /node_modules
+.lsp/
