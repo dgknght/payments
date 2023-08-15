@@ -271,13 +271,14 @@
   (build-url "v1" "identity" "generate-token"))
 
 (defn generate-client-token []
-  (let [{:keys [body] :as res}
+  (let [{:keys [body status] :as res}
         (http-post (gen-client-token-url)
                    {:oauth-token (generate-access-token)})]
     (if (http/success? res)
       (transform-keys ->kebab-case-keyword body)
       (throw (ex-info "Unable to generate the client token with PayPal"
-                      {:response body})))))
+                      {:response body
+                       :status status})))))
 
 (defn- web-profiles-url
   ([] (web-profiles-url nil))
