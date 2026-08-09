@@ -367,7 +367,7 @@
                 "webhook_event" {"id" "WH-EVENT-1"
                                  "event_type" "PAYMENT.SALE.COMPLETED"}}
                (json/parse-string (:body c2) false))
-            "The correct data, with the webhook event passed through unmodified, is sent")
+            "The transaction data, with the webhook event passed through unmodified, is sent")
         (is (= {:verification-status :success}
                res)
             "The verification status is cljified and returned")))))
