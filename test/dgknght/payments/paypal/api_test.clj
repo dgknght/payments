@@ -328,3 +328,58 @@
                         :status :approval-pending}
                        res)
           "The response is cljified and returned"))))
+
+(def verify-webhook-signature-mocks
+  {#"v1\/oauth2\/token"                          (mock :generate-access-token)
+   #"v1\/notifications\/verify-webhook-signature" (mock :verify-webhook-signature)})
+
+(def webhook-verification-req
+  {:transmission-id "abc123"
+   :transmission-time "2026-08-08T12:00:00Z"
+   :cert-url "https://api.sandbox.paypal.com/cert"
+   :auth-algo "SHA256withRSA"
+   :transmission-sig "sig=="
+   :webhook-id "WH-123"
+   :webhook-event {"id" "WH-EVENT-1"
+                   "event_type" "PAYMENT.SALE.COMPLETED"}})
+
+(deftest verify-a-webhook-signature
+  (with-web-mocks [calls] verify-webhook-signature-mocks
+    (with-config config
+      (let [res (pp/verify-webhook-signature webhook-verification-req)
+            [_ c2 :as cs] (map (fn [c]
+                                 (update-in c
+                                            [:body]
+                                            #(slurp (.getContent %))))
+                               @calls)]
+        (is (= 2 (count cs))
+            "The PayPal API is called twice")
+        (is (comparable? {:url "https://api-m.sandbox.paypal.com/v1/notifications/verify-webhook-signature"
+                          :request-method :post}
+                         c2)
+            "The verify-webhook-signature endpoint is called")
+        (is (= {"transmission_id" "abc123"
+                "transmission_time" "2026-08-08T12:00:00Z"
+                "cert_url" "https://api.sandbox.paypal.com/cert"
+                "auth_algo" "SHA256withRSA"
+                "transmission_sig" "sig=="
+                "webhook_id" "WH-123"
+                "webhook_event" {"id" "WH-EVENT-1"
+                                 "event_type" "PAYMENT.SALE.COMPLETED"}}
+               (json/parse-string (:body c2) false))
+            "The correct data, with the webhook event passed through unmodified, is sent")
+        (is (= {:verification-status :success}
+               res)
+            "The verification status is cljified and returned")))))
+
+(def failed-verify-webhook-signature-mocks
+  {#"v1\/oauth2\/token"                          (mock :generate-access-token)
+   #"v1\/notifications\/verify-webhook-signature" (mock :verify-webhook-signature-failure)})
+
+(deftest verify-a-failed-webhook-signature
+  (with-web-mocks [calls] failed-verify-webhook-signature-mocks
+    (with-config config
+      (let [res (pp/verify-webhook-signature webhook-verification-req)]
+        (is (= {:verification-status :failure}
+               res)
+            "A failed verification status is cljified and returned")))))
