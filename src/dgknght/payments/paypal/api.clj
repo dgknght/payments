@@ -206,13 +206,20 @@
   (http/with-middleware (concat http/*current-middleware* middleware)
     (http/delete url (merge default-opts opts))))
 
+; Refresh the cached token this many ms before it actually expires, so a
+; token that's about to expire is never handed to an in-flight request.
+(def ^:private token-expiry-buffer-ms 60000)
+
 (defn- generate-access-token-url []
   (-> (base-uri)
       uri
       (assoc :path "/v1/oauth2/token")
       str))
 
-(defn- generate-access-token []
+(defn- cache-key [cfg]
+  (select-keys cfg [:client-id :environment]))
+
+(defn- fetch-access-token []
   (let [{:keys [clj-body] :as res}
         (http-post
           (generate-access-token-url)
@@ -220,9 +227,30 @@
            :content-type "application/x-www-form-urlencoded"
            :form-params {"grant_type" "client_credentials"}})]
     (if (http/success? res)
-      (:access-token clj-body)
+      clj-body
       (throw (ex-info "Unable to acquire an access token"
                       {:response clj-body})))))
+
+(defonce ^:private token-cache (atom {}))
+
+(defn- cached-token
+  [k fetch]
+  (let [cached (get-in @token-cache [k])]
+    (if (and cached (< (System/currentTimeMillis)
+                       (:expires-at cached)))
+      (:access-token cached)
+      (let [{:keys [access-token expires-in]} (fetch)]
+         (swap! token-cache assoc k
+                {:access-token access-token
+                 :expires-at (+ (System/currentTimeMillis)
+                                (- (* 1000 expires-in)
+                                   token-expiry-buffer-ms))})
+         access-token))))
+
+(defn- access-token
+  ([] (access-token (cache-key (config))))
+  ([k]
+   (cached-token k fetch-access-token)))
 
 (defn- build-url
   [& segments]
@@ -245,7 +273,7 @@
         (http-post
           (create-order-url)
           {:form-params (jsonify ord)
-           :oauth-token (generate-access-token)})]
+           :oauth-token (access-token)})]
     (if (http/success? res)
       clj-body
       (throw (ex-info "Unable to create the order with PayPal"
@@ -260,7 +288,7 @@
   [order-id]
   (let [{:keys [clj-body] :as res}
         (http-post (capture-payment-url order-id)
-                   {:oauth-token (generate-access-token)})]
+                   {:oauth-token (access-token)})]
     (if (http/success? res)
       clj-body
       (throw (ex-info "Unable to capture the payment with PayPal"
@@ -273,7 +301,7 @@
 (defn generate-client-token []
   (let [{:keys [body status] :as res}
         (http-post (gen-client-token-url)
-                   {:oauth-token (generate-access-token)})]
+                   {:oauth-token (access-token)})]
     (if (http/success? res)
       (transform-keys ->kebab-case-keyword body)
       (throw (ex-info "Unable to generate the client token with PayPal"
@@ -290,17 +318,17 @@
   ([]
    (:clj-body
      (http-get (web-profiles-url)
-               {:oauth-token (generate-access-token)})))
+               {:oauth-token (access-token)})))
   ([{:keys [add delete]}]
    (when delete
      (http-delete (web-profiles-url (or (:id delete)
                                         delete))
-                  {:oauth-token (generate-access-token)}))
+                  {:oauth-token (access-token)}))
    (when add
      (:clj-body
                  (http-post (web-profiles-url)
                             {:form-params (jsonify add)
-                             :oauth-token (generate-access-token)})))))
+                             :oauth-token (access-token)})))))
 
 (defn- create-subscription-url []
   (build-url "v1" "billing" "subscriptions"))
@@ -309,7 +337,7 @@
   [sub]
   (:clj-body (http-post (create-subscription-url)
                         {:form-params (jsonify sub)
-                         :oauth-token (generate-access-token) })))
+                         :oauth-token (access-token) })))
 
 (defn- verify-webhook-signature-url []
   (build-url "v1" "notifications" "verify-webhook-signature"))
@@ -335,7 +363,7 @@
                          :transmission_sig transmission-sig
                          :webhook_id webhook-id
                          :webhook_event webhook-event}
-           :oauth-token (generate-access-token)})]
+           :oauth-token (access-token)})]
     (if (http/success? res)
       clj-body
       (throw (ex-info "Unable to verify the webhook signature with PayPal"
