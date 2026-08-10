@@ -6,7 +6,7 @@
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [lambdaisland/uri "1.13.95"]
                  [ch.qos.logback/logback-classic "1.2.3"]
-                 [cheshire "5.11.0"]
+                 [cheshire "6.2.0"]
                  [clj-http "3.12.3"]
                  [camel-snake-kebab "0.4.3"]
                  [com.github.dgknght/app-lib "0.2.7"
