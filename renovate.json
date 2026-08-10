@@ -1,0 +1,18 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "ignorePaths": ["pom.xml"],
+  "lockFileMaintenance": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "description": "Group Clojure dependency updates into a single PR",
+      "matchManagers": ["leiningen"],
+      "groupName": "Clojure dependencies",
+      "registryUrls": ["https://repo.maven.apache.org/maven2", "https://clojars.org/repo"]
+    }
+  ]
+}
