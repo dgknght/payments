@@ -94,19 +94,23 @@
               "two http calls are made")
 
           ; generate access token
-          (is (comparable? {"content-type" "application/x-www-form-urlencoded"
-                            "authorization" "Basic cGF5cGFsLWNsaWVudC1pZDpwYXlwYWwtc2VjcmV0"}
-                           (:headers c1))
-              "The correct headers are sent for the access token call")
+          (is (= "application/x-www-form-urlencoded"
+                 (get-in c1 [:headers "content-type"]))
+              "The content type for the access token call is form-urlencoded")
+          (is (= "Basic cGF5cGFsLWNsaWVudC1pZDpwYXlwYWwtc2VjcmV0"
+                 (get-in c1 [:headers "authorization"]))
+              "Basic authorization is passed to the access token call")
           (is (= "grant_type=client_credentials"
                  (:body c1))
               "The correct content is sent in the access token call")
 
           ; create order
-          (is (comparable? {"content-type" "application/json"
-                            "authorization" "Bearer A21AAFEpH4PsADK7qSS7pSRsgzfENtu-Q1ysgEDVDESseMHBYXVJYE8ovjj68elIDy8nF26AwPhfXTIeWAZHSLIsQkSYz9ifg"}
-                           (:headers c2))
-              "The correct headers are specified for the create-order call")
+          (is (= "application/json"
+                 (get-in c2 [:headers "content-type"]))
+              "The content type for the order creation call is application/json")
+          (is (= "Bearer A21AAFEpH4PsADK7qSS7pSRsgzfENtu-Q1ysgEDVDESseMHBYXVJYE8ovjj68elIDy8nF26AwPhfXTIeWAZHSLIsQkSYz9ifg"
+                 (get-in c2 [:headers "authorization"]))
+              "Basic authorization is passed to the order creation call")
           (is (= expected-order-req-body
                  (json/parse-string (:body c2) true))
               "The correct data is sent for the create-order call"))))))
@@ -168,10 +172,12 @@
                             :request-method :post}
                            c)
               "The request is POSTed to the correct url")
-          (is (comparable? {"Content-Type" "application/json"
-                            "Authorization" "Basic cGF5cGFsLWNsaWVudC1pZDpwYXlwYWwtc2VjcmV0"}
-                           (:headers c))
-              "The request is made with the correct headers"))))))
+          (is (= "application/json"
+                 (get-in c [:headers "Content-Type"]))
+              "The content type is application/json")
+          (is (= "Basic cGF5cGFsLWNsaWVudC1pZDpwYXlwYWwtc2VjcmV0"
+                 (get-in c [:headers "Authorization"]))
+              "The authorization is Basic"))))))
 
 (def token-mocks
   {#"v1\/oauth2/token"             (mock :generate-access-token)
@@ -198,10 +204,12 @@
                         :request-method :post}
                        c2)
           "The second call fetches the client token")
-      (is (comparable? {"Authorization" "Bearer A21AAFEpH4PsADK7qSS7pSRsgzfENtu-Q1ysgEDVDESseMHBYXVJYE8ovjj68elIDy8nF26AwPhfXTIeWAZHSLIsQkSYz9ifg"
-                        "Content-Type" "application/json"}
-                       (:headers c2))
-          "The client token is fetched with correct headers"))))
+      (is (= "Bearer A21AAFEpH4PsADK7qSS7pSRsgzfENtu-Q1ysgEDVDESseMHBYXVJYE8ovjj68elIDy8nF26AwPhfXTIeWAZHSLIsQkSYz9ifg"
+             (get-in c2 [:headers "Authorization"]))
+          "The authentication is basic for the client token creation call")
+      (is (= "application/json"
+             (get-in c2 [:headers "Content-Type"]))
+          "The content type is application/json for the client token creation call"))))
 
 (def profile-mocks
   {#"v1\/oauth2\/token"                    (mock :generate-access-token)
