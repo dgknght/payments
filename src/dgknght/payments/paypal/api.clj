@@ -260,7 +260,7 @@
   [order-id]
   (let [{:keys [clj-body] :as res}
         (http-post (capture-payment-url order-id)
-                   {:basic-auth (basic-creds (config))})]
+                   {:oauth-token (generate-access-token)})]
     (if (http/success? res)
       clj-body
       (throw (ex-info "Unable to capture the payment with PayPal"

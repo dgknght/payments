@@ -150,7 +150,8 @@
             "The response has been clojurified")))))
 
 (def ^:private capture-mocks
-  {#"v2\/checkout\/orders" (mock :capture-payment-success)})
+  {#"v1\/oauth2\/token"    (mock :generate-access-token)
+   #"v2\/checkout\/orders" (mock :capture-payment-success)})
 
 (deftest capture-a-payment
   (with-web-mocks [calls] capture-mocks
@@ -165,19 +166,19 @@
                     (mapcat #(get-in % [:payments :captures]) )
                     (map :status)))
             "The response indicates the status of each payment unit")
-        (let [[c :as cs] @calls]
-          (is (= 1 (count cs))
-              "One API call is made")
+        (let [[_ c2 :as cs] @calls]
+          (is (= 2 (count cs))
+              "Two API calls are made")
           (is (comparable? {:url "https://api-m.sandbox.paypal.com/v2/checkout/orders/5O190127TN364715T/capture"
                             :request-method :post}
-                           c)
+                           c2)
               "The request is POSTed to the correct url")
           (is (= "application/json"
-                 (get-in c [:headers "Content-Type"]))
+                 (get-in c2 [:headers "Content-Type"]))
               "The content type is application/json")
-          (is (= "Basic cGF5cGFsLWNsaWVudC1pZDpwYXlwYWwtc2VjcmV0"
-                 (get-in c [:headers "Authorization"]))
-              "The authorization is Basic"))))))
+          (is (= "Bearer A21AAFEpH4PsADK7qSS7pSRsgzfENtu-Q1ysgEDVDESseMHBYXVJYE8ovjj68elIDy8nF26AwPhfXTIeWAZHSLIsQkSYz9ifg"
+                 (get-in c2 [:headers "Authorization"]))
+              "The authorization is a Bearer token"))))))
 
 (def token-mocks
   {#"v1\/oauth2/token"             (mock :generate-access-token)
