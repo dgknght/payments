@@ -310,3 +310,33 @@
   (:clj-body (http-post (create-subscription-url)
                         {:form-params (jsonify sub)
                          :oauth-token (generate-access-token) })))
+
+(defn- verify-webhook-signature-url []
+  (build-url "v1" "notifications" "verify-webhook-signature"))
+
+(defn verify-webhook-signature
+  "Verifies a PayPal webhook notification's signature.
+
+  req - a map with :transmission-id, :transmission-time, :cert-url,
+  :auth-algo, and :transmission-sig (from the webhook request's
+  paypal-transmission-* headers), :webhook-id (configured for this
+  app in the PayPal developer dashboard), and :webhook-event (the
+  webhook request body, parsed but otherwise passed through
+  unmodified, since PayPal recomputes the signature against it)"
+  [{:keys [transmission-id transmission-time cert-url auth-algo
+           transmission-sig webhook-id webhook-event]}]
+  (let [{:keys [clj-body] :as res}
+        (http-post
+          (verify-webhook-signature-url)
+          {:form-params {:transmission_id transmission-id
+                         :transmission_time transmission-time
+                         :cert_url cert-url
+                         :auth_algo auth-algo
+                         :transmission_sig transmission-sig
+                         :webhook_id webhook-id
+                         :webhook_event webhook-event}
+           :oauth-token (generate-access-token)})]
+    (if (http/success? res)
+      clj-body
+      (throw (ex-info "Unable to verify the webhook signature with PayPal"
+                      {:response clj-body})))))
