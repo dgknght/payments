@@ -1,5 +1,5 @@
 (ns dgknght.payments.paypal.api-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [clojure.test :refer [deftest is use-fixtures]]
             [clj-http.core :as http] ; web-mocks won't work without this
             [cheshire.core :as json]
             [dgknght.app-lib.test]
@@ -62,6 +62,13 @@
   {:paypal {:environment "sandbox"
             :client-id "paypal-client-id"
             :secret "paypal-secret" }})
+
+; The access token cache is process-global, so it must be cleared between
+; tests to keep them independent of run order and of each other.
+(use-fixtures :each
+  (fn [f]
+    (reset! @#'pp/token-cache {})
+    (f)))
 
 (deftest create-an-order
   (with-web-mocks [calls] create-order-mocks
@@ -128,6 +135,25 @@
       (pp/create-order order))
     (is (not-called? calls #"^https://api-m.sandbox.paypal.com"))
     (is (called? :twice calls #"^https://api-m.paypal.com"))))
+
+(deftest cache-the-access-token-across-multiple-calls
+  (with-web-mocks [calls] create-order-mocks
+    (with-config config
+      (pp/create-order order)
+      (pp/create-order order))
+    (is (called? :once calls #"v1/oauth2/token")
+        "The access token is fetched once and reused for the second call")
+    (is (called? :twice calls #"v2/checkout/orders")
+        "Each call still hits the order creation endpoint")))
+
+(deftest fetch-a-new-access-token-once-the-cached-one-has-expired
+  (with-web-mocks [calls] create-order-mocks
+    (with-config config
+      (pp/create-order order)
+      (swap! @#'pp/token-cache update-vals #(assoc % :expires-at 0))
+      (pp/create-order order))
+    (is (called? :twice calls #"v1/oauth2/token")
+        "An expired cached token triggers a new token fetch")))
 
 (def failed-create-order-mocks
   {#"v1\/oauth2/token"      (mock :generate-access-token)

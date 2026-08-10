@@ -206,13 +206,28 @@
   (http/with-middleware (concat http/*current-middleware* middleware)
     (http/delete url (merge default-opts opts))))
 
+(defonce ^:private token-cache (atom {}))
+
+; Refresh the cached token this many ms before it actually expires, so a
+; token that's about to expire is never handed to an in-flight request.
+(def ^:private token-expiry-buffer-ms 60000)
+
 (defn- generate-access-token-url []
   (-> (base-uri)
       uri
       (assoc :path "/v1/oauth2/token")
       str))
 
-(defn- generate-access-token []
+(defn- cache-key [cfg]
+  (select-keys cfg [:client-id :environment]))
+
+(defn- valid-cached-token
+  [k]
+  (when-let [{:keys [access-token expires-at]} (get @token-cache k)]
+    (when (< (System/currentTimeMillis) expires-at)
+      access-token)))
+
+(defn- fetch-access-token []
   (let [{:keys [clj-body] :as res}
         (http-post
           (generate-access-token-url)
@@ -220,9 +235,20 @@
            :content-type "application/x-www-form-urlencoded"
            :form-params {"grant_type" "client_credentials"}})]
     (if (http/success? res)
-      (:access-token clj-body)
+      clj-body
       (throw (ex-info "Unable to acquire an access token"
                       {:response clj-body})))))
+
+(defn- generate-access-token []
+  (let [k (cache-key (config))]
+    (or (valid-cached-token k)
+        (let [{:keys [access-token expires-in]} (fetch-access-token)]
+          (swap! token-cache assoc k
+                 {:access-token access-token
+                  :expires-at (+ (System/currentTimeMillis)
+                                 (- (* 1000 expires-in)
+                                    token-expiry-buffer-ms))})
+          access-token))))
 
 (defn- build-url
   [& segments]
