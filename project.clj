@@ -3,13 +3,13 @@
   :url "http://github.com/dgknght/payments"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.10.1"]
-                 [lambdaisland/uri "1.13.95"]
-                 [ch.qos.logback/logback-classic "1.2.3"]
+  :dependencies [[org.clojure/clojure "1.12.5"]
+                 [lambdaisland/uri "1.19.155"]
+                 [ch.qos.logback/logback-classic "1.6.1"]
                  [cheshire "6.2.0"]
-                 [clj-http "3.12.3"]
+                 [clj-http "3.13.1"]
                  [camel-snake-kebab "0.4.3"]
-                 [com.github.dgknght/app-lib "0.2.7"
+                 [com.github.dgknght/app-lib "0.3.51"
                   :exclusions [camel-snake-kebab]]]
   :plugins [[lein-cljsbuild "1.1.8"]
             [lein-doo "0.1.11"]
