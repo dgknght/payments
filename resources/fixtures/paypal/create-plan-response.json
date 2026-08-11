@@ -1,0 +1,26 @@
+{
+  "id": "P-5ML4271244454362WXNWU5NQ",
+  "product_id": "PROD-6XB24663H4094933M",
+  "name": "Basic Plan",
+  "description": "Basic plan",
+  "status": "ACTIVE",
+  "billing_cycles": [
+    {
+      "frequency": {
+        "interval_unit": "MONTH",
+        "interval_count": 1
+      },
+      "tenure_type": "REGULAR",
+      "sequence": 1,
+      "total_cycles": 0,
+      "pricing_scheme": {
+        "fixed_price": {
+          "value": "9.99",
+          "currency_code": "USD"
+        }
+      }
+    }
+  ],
+  "create_time": "2026-08-01T10:00:00Z",
+  "update_time": "2026-08-01T10:00:00Z"
+}

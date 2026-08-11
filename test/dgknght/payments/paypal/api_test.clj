@@ -410,3 +410,181 @@
         (is (= {:verification-status :failure}
                res)
             "A failed verification status is cljified and returned")))))
+
+(def ^:private product
+  {:name "Video Streaming Service"
+   :description "Video streaming service"
+   :type :service})
+
+(def create-product-mocks
+  {#"v1\/oauth2\/token"        (mock :generate-access-token)
+   #"v1\/catalogs\/products$" (mock :create-product)})
+
+(deftest create-a-product
+  (with-web-mocks [calls] create-product-mocks
+    (with-config config
+      (let [res (pp/create-product product)
+            [_ c2 :as cs] (map (fn [c]
+                                 (update-in c [:body] #(slurp (.getContent %))))
+                               @calls)]
+        (is (= 2 (count cs))
+            "The PayPal API is called twice")
+        (is (comparable? {:url "https://api-m.sandbox.paypal.com/v1/catalogs/products"
+                          :request-method :post}
+                         c2)
+            "The create-product endpoint is called")
+        (is (= {:name "Video Streaming Service"
+                :description "Video streaming service"
+                :type "SERVICE"}
+               (json/parse-string (:body c2) true))
+            "The correct data is submitted to the endpoint")
+        (is (comparable? {:id "PROD-6XB24663H4094933M"
+                          :name "Video Streaming Service"
+                          :type :service}
+                         res)
+            "The response is cljified and returned")))))
+
+(def failed-create-product-mocks
+  {#"v1\/oauth2\/token"        (mock :generate-access-token)
+   #"v1\/catalogs\/products$" (mock :non-identity-error 401)})
+
+(deftest handle-a-failed-product-creation
+  (with-web-mocks [calls] failed-create-product-mocks
+    (with-config config
+      (let [ex (try (pp/create-product product)
+                    (catch Exception e
+                      e))]
+        (is (= "Unable to create the product with PayPal"
+               (ex-message ex))
+            "The exception has a meaningful description")
+        (is (comparable? {:name :risk-decline}
+                         (:response (ex-data ex)))
+            "The response has been clojurified")))))
+
+(def list-products-mocks
+  {#"v1\/oauth2\/token"        (mock :generate-access-token)
+   #"v1\/catalogs\/products$" (mock :list-products 200)})
+
+(deftest list-all-products
+  (with-web-mocks [calls] list-products-mocks
+    (with-config config
+      (let [res (pp/list-products)]
+        (is (= [{:id "PROD-6XB24663H4094933M"
+                :name "Video Streaming Service"
+                :type :service}]
+               (map #(select-keys % [:id :name :type]) res))
+            "The products are returned")))))
+
+(def update-product-mocks
+  {#"v1\/oauth2\/token"                       (mock :generate-access-token)
+   #"v1\/catalogs\/products\/PROD-XYZ$" (mock)})
+
+(deftest update-a-product
+  (with-web-mocks [calls] update-product-mocks
+    (with-config config
+      (let [res (pp/update-product "PROD-XYZ" [{:op :replace
+                                                :path "/description"
+                                                :value "New description"}])
+            [_ c2 :as cs] (map (fn [c]
+                                 (update-in c [:body] #(slurp (.getContent %))))
+                               @calls)]
+        (is (nil? res)
+            "Nothing is returned, since PayPal responds with 204")
+        (is (comparable? {:url "https://api-m.sandbox.paypal.com/v1/catalogs/products/PROD-XYZ"
+                          :request-method :patch}
+                         c2)
+            "The update-product endpoint is called")
+        (is (= [{:op "replace"
+                :path "/description"
+                :value "New description"}]
+               (json/parse-string (:body c2) true))
+            "The op stays lowercase and the value is passed through unmodified")))))
+
+(def ^:private plan
+  {:product-id "PROD-6XB24663H4094933M"
+   :name "Basic Plan"
+   :billing-cycles [{:frequency {:interval-unit :month
+                                 :interval-count 1}
+                     :tenure-type :regular
+                     :sequence 1
+                     :pricing-scheme {:fixed-price 9.99M}}]})
+
+(def create-plan-mocks
+  {#"v1\/oauth2\/token"     (mock :generate-access-token)
+   #"v1\/billing\/plans$" (mock :create-plan)})
+
+(deftest create-a-plan
+  (with-web-mocks [calls] create-plan-mocks
+    (with-config config
+      (let [res (pp/create-plan plan)
+            [_ c2 :as cs] (map (fn [c]
+                                 (update-in c [:body] #(slurp (.getContent %))))
+                               @calls)]
+        (is (= 2 (count cs))
+            "The PayPal API is called twice")
+        (is (comparable? {:product_id "PROD-6XB24663H4094933M"
+                          :name "Basic Plan"
+                          :billing_cycles [{:frequency {:interval_unit "MONTH"
+                                                        :interval_count 1}
+                                            :tenure_type "REGULAR"
+                                            :sequence 1
+                                            :pricing_scheme {:fixed_price {:value "9.99"
+                                                                          :currency_code "USD"}}}]}
+                         (json/parse-string (:body c2) true))
+            "The correct data is submitted to the endpoint")
+        (is (comparable? {:id "P-5ML4271244454362WXNWU5NQ"
+                          :product-id "PROD-6XB24663H4094933M"
+                          :status :active}
+                         res)
+            "The response is cljified and returned")))))
+
+(def list-plans-mocks
+  {#"v1\/oauth2\/token"   (mock :generate-access-token)
+   #"v1\/billing\/plans" (mock :list-plans 200)})
+
+(deftest list-all-plans
+  (with-web-mocks [calls] list-plans-mocks
+    (with-config config
+      (let [res (pp/list-plans {:product-id "PROD-6XB24663H4094933M"})
+            [_ c2 :as cs] @calls]
+        (is (comparable? {:url "https://api-m.sandbox.paypal.com/v1/billing/plans"
+                          :request-method :get
+                          :query-params {:product_id "PROD-6XB24663H4094933M"}}
+                         c2)
+            "The product_id filter is passed as a query param")
+        (is (= [{:id "P-5ML4271244454362WXNWU5NQ"
+                :status :active}]
+               (map #(select-keys % [:id :status]) res))
+            "The plans are returned")))))
+
+(def activate-plan-mocks
+  {#"v1\/oauth2\/token"                              (mock :generate-access-token)
+   #"v1\/billing\/plans\/P-XYZ\/activate" (mock)})
+
+(deftest activate-a-plan
+  (with-web-mocks [calls] activate-plan-mocks
+    (with-config config
+      (let [res (pp/activate-plan "P-XYZ")
+            [_ c2 :as cs] @calls]
+        (is (nil? res)
+            "Nothing is returned, since PayPal responds with 204")
+        (is (comparable? {:url "https://api-m.sandbox.paypal.com/v1/billing/plans/P-XYZ/activate"
+                          :request-method :post}
+                         c2)
+            "The activate-plan endpoint is called")))))
+
+(def deactivate-plan-mocks
+  {#"v1\/oauth2\/token"                                (mock :generate-access-token)
+   #"v1\/billing\/plans\/P-XYZ\/deactivate" (mock)})
+
+(deftest deactivate-a-plan
+  (with-web-mocks [calls] deactivate-plan-mocks
+    (with-config config
+      (let [res (pp/deactivate-plan "P-XYZ")
+            [_ c2 :as cs] @calls]
+        (is (nil? res)
+            "Nothing is returned, since PayPal responds with 204")
+        (is (comparable? {:url "https://api-m.sandbox.paypal.com/v1/billing/plans/P-XYZ/deactivate"
+                          :request-method :post}
+                         c2)
+            "The deactivate-plan endpoint is called")))))
