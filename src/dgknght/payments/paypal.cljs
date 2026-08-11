@@ -10,8 +10,10 @@
   (comp (partial transform-keys ->kebab-case-keyword)
         c/js->clj))
 
+(def default-promise-timeout-ms 5000)
+
 (defn- ->promise
-  [xf args]
+  [xf args timeout-ms]
   (js/Promise.
     (fn [res rej]
       (let [c (a/promise-chan xf rej)
@@ -19,7 +21,7 @@
         ; In the unit tests, the channel yields the value
         ; immediately. In the browser, the channel doesn't
         ; yield the value until the channel is closed.
-        (a/go (a/<! (a/timeout 5000)) ; TODO: make this configurable
+        (a/go (a/<! (a/timeout timeout-ms))
               (when-not @yielded?
                 (a/close! c)))
         (a/go
@@ -34,27 +36,33 @@
            create-subscription
            on-approve
            on-cancel
-           style]}]
+           style
+           timeout-ms]
+    :or {timeout-ms default-promise-timeout-ms}}]
   (clj->js
     (cond-> {"onApprove" (fn [data actions]
                            (->promise on-approve
                                       {:data (js->clj data)
-                                       :actions (js->clj actions)}))}
+                                       :actions (js->clj actions)}
+                                      timeout-ms))}
       create-order (assoc "createOrder"
                           (fn [data actions]
                             (->promise create-order
                                        {:data (js->clj data)
-                                        :actions (js->clj actions)})))
+                                        :actions (js->clj actions)}
+                                       timeout-ms)))
       create-subscription (assoc
                             "createSubscription"
                             (fn [data actions]
                               (->promise create-subscription
                                          {:data (js->clj data)
-                                          :actions (js->clj actions)})))
+                                          :actions (js->clj actions)}
+                                         timeout-ms)))
       on-cancel (assoc
                   "onCancel" (fn [data]
                                (->promise on-cancel
-                                          {:data (js->clj data)})))
+                                          {:data (js->clj data)}
+                                          timeout-ms)))
       style (assoc "style" style))))
 
 (s/def ::element-id string?)
@@ -82,6 +90,7 @@
                                 ::height
                                 ::label]))
 (s/def ::on-error fn?)
+(s/def ::timeout-ms pos-int?)
 (s/def ::buttons-options
   (s/and
     (s/keys :req-un [::element-id
@@ -91,7 +100,8 @@
                      ::on-cancel
                      ::on-init
                      ::on-click
-                     ::on-shipping-change])
+                     ::on-shipping-change
+                     ::timeout-ms])
     #(or (:create-order %)
          (:create-subscription %))
     #(not

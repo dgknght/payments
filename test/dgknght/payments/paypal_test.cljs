@@ -99,3 +99,37 @@
                      :create-order create-order
                      :on-approve on-approve})
         (m/click controller)))))
+
+(deftest create-and-finalize-the-payment-with-a-custom-timeout
+  (async
+    done
+    (with-paypal-mocks [calls controller]
+      (let [create-order (map (fn [_args] "abc123"))
+            on-approve (map (fn [{:keys [data]}]
+                              (is (= "abc123" (:order-id data))
+                                  "The order ID is passed the on-approve handler")
+                              (done)
+                              data))]
+        (pp/buttons {:element-id "#buttons-container"
+                     :timeout-ms 9999
+                     :create-order create-order
+                     :on-approve on-approve})
+        (m/click controller)))))
+
+(deftest reject-a-non-positive-timeout-ms
+  (let [calls (atom {})
+        f (fn [k & args]
+            (swap! calls update-in [k] (fnil conj []) args))]
+    (with-redefs [js/console (js-obj
+                               "warn" (partial f :warn)
+                               "log" (partial f :log)
+                               "error" (partial f :error))]
+      (is (thrown-with-msg? js/Error #"Assert failed: \(valid-buttons-args\? args\)"
+                            (pp/buttons {:element-id "#button-container"
+                                         :create-order (fn [& _])
+                                         :on-approve (fn [& _])
+                                         :timeout-ms -1}))
+          ":timeout-ms must be a positive integer")
+      (let [cs (get-in @calls [:error] [])]
+        (is (= 1 (count cs))
+            "One error is logged")))))

@@ -363,7 +363,7 @@
 (def webhook-verification-req
   {:transmission-id "abc123"
    :transmission-time "2026-08-08T12:00:00Z"
-   :cert-url "https://api.sandbox.paypal.com/cert"
+   :cert-url "https://api-m.sandbox.paypal.com/cert"
    :auth-algo "SHA256withRSA"
    :transmission-sig "sig=="
    :webhook-id "WH-123"
@@ -387,7 +387,7 @@
             "The verify-webhook-signature endpoint is called")
         (is (= {"transmission_id" "abc123"
                 "transmission_time" "2026-08-08T12:00:00Z"
-                "cert_url" "https://api.sandbox.paypal.com/cert"
+                "cert_url" "https://api-m.sandbox.paypal.com/cert"
                 "auth_algo" "SHA256withRSA"
                 "transmission_sig" "sig=="
                 "webhook_id" "WH-123"
