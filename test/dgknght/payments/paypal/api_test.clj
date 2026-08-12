@@ -488,6 +488,8 @@
             [_ c2 :as cs] (map (fn [c]
                                  (update-in c [:body] #(slurp (.getContent %))))
                                @calls)]
+        (is (= 2 (count cs))
+            "Two API calls are made to PayPal")
         (is (nil? res)
             "Nothing is returned, since PayPal responds with 204")
         (is (comparable? {:url "https://api-m.sandbox.paypal.com/v1/catalogs/products/PROD-XYZ"
@@ -547,6 +549,8 @@
     (with-config config
       (let [res (pp/list-plans {:product-id "PROD-6XB24663H4094933M"})
             [_ c2 :as cs] @calls]
+        (is (= 2 (count cs))
+            "The PayPal API is called twice")
         (is (comparable? {:url "https://api-m.sandbox.paypal.com/v1/billing/plans"
                           :request-method :get
                           :query-params {:product_id "PROD-6XB24663H4094933M"}}
@@ -566,6 +570,8 @@
     (with-config config
       (let [res (pp/activate-plan "P-XYZ")
             [_ c2 :as cs] @calls]
+        (is (= 2 (count cs))
+            "The PayPal API is called twice")
         (is (nil? res)
             "Nothing is returned, since PayPal responds with 204")
         (is (comparable? {:url "https://api-m.sandbox.paypal.com/v1/billing/plans/P-XYZ/activate"
@@ -582,6 +588,8 @@
     (with-config config
       (let [res (pp/deactivate-plan "P-XYZ")
             [_ c2 :as cs] @calls]
+        (is (= 2 (count cs))
+            "The PayPal API is called twice")
         (is (nil? res)
             "Nothing is returned, since PayPal responds with 204")
         (is (comparable? {:url "https://api-m.sandbox.paypal.com/v1/billing/plans/P-XYZ/deactivate"
