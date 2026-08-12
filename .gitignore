@@ -9,7 +9,8 @@ pom.xml.asc
 /.nrepl-port
 .hgignore
 .hg/
-/.clj-kondo/.cache
+/.clj-kondo
+~/.clj-kondo/config.edn
 /log
 /out
 /node_modules
