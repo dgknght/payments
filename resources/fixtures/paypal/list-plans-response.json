@@ -1,0 +1,14 @@
+{
+  "total_items": 1,
+  "total_pages": 1,
+  "plans": [
+    {
+      "id": "P-5ML4271244454362WXNWU5NQ",
+      "product_id": "PROD-6XB24663H4094933M",
+      "name": "Basic Plan",
+      "status": "ACTIVE",
+      "create_time": "2026-08-01T10:00:00Z",
+      "update_time": "2026-08-01T10:00:00Z"
+    }
+  ]
+}

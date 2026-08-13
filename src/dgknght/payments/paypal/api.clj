@@ -206,6 +206,11 @@
   (http/with-middleware (concat http/*current-middleware* middleware)
     (http/delete url (merge default-opts opts))))
 
+(defn- http-patch
+  [url opts]
+  (http/with-middleware (concat http/*current-middleware* middleware)
+    (http/patch url (merge default-opts opts))))
+
 ; Refresh the cached token this many ms before it actually expires, so a
 ; token that's about to expire is never handed to an in-flight request.
 (def ^:private token-expiry-buffer-ms 60000)
@@ -368,3 +373,193 @@
       clj-body
       (throw (ex-info "Unable to verify the webhook signature with PayPal"
                       {:response clj-body})))))
+
+; Products and billing plans (PayPal's subscription catalog).
+;
+; :category is deliberately not spec'd here. PayPal maintains ~200 valid
+; values for it and validates it server-side; duplicating that enum isn't
+; worth it. It's still accepted and passed through unvalidated since
+; s/keys does not reject unlisted keys.
+
+(s/def ::type #{:physical :digital :service})
+(s/def ::image-url string?)
+(s/def ::home-url string?)
+
+(s/def ::product
+  (s/keys :req-un [::name ::type]
+          :opt-un [::description ::image-url ::home-url]))
+
+(s/def ::product-id string?)
+(s/def ::interval-unit #{:day :week :month :year})
+(s/def ::interval-count pos-int?)
+(s/def ::frequency (s/keys :req-un [::interval-unit ::interval-count]))
+(s/def ::tenure-type #{:regular :trial})
+(s/def ::sequence pos-int?)
+(s/def ::total-cycles nat-int?)
+(s/def ::fixed-price currency-value)
+(s/def ::pricing-scheme (s/keys :req-un [::fixed-price]))
+(s/def ::billing-cycle
+  (s/keys :req-un [::frequency ::tenure-type ::sequence ::pricing-scheme]
+          :opt-un [::total-cycles]))
+(s/def ::billing-cycles (s/coll-of ::billing-cycle :min-count 1))
+
+(s/def ::plan
+  (s/keys :req-un [::product-id ::name ::billing-cycles]
+          :opt-un [::description]))
+
+; PayPal's PATCH endpoints use JSON Patch (RFC 6902): [{op, path, value}].
+; `op` and `path` must stay as plain lowercase strings; only `value` may need
+; the same key/keyword-case conversion `jsonify` applies elsewhere, and only
+; when it's a nested map (e.g. payment_preferences). A bare string/number
+; value is left as-is; clj-http's JSON encoding serializes it correctly.
+(defn- ->patch-op
+  [{:keys [op path value]}]
+  (cond-> {:op (name op) :path path}
+    (some? value) (assoc :value (if (map? value) (jsonify value) value))))
+
+(defn- products-url
+  ([] (build-url "v1" "catalogs" "products"))
+  ([id] (build-url "v1" "catalogs" "products" id)))
+
+(defn create-product
+  "Create a PayPal catalog product"
+  [product]
+  {:pre [(s/valid? ::product product)]}
+  (let [{:keys [clj-body] :as res}
+        (http-post (products-url)
+                   {:form-params (jsonify product)
+                    :oauth-token (access-token)})]
+    (if (http/success? res)
+      clj-body
+      (throw (ex-info "Unable to create the product with PayPal"
+                      {:product product
+                       :response clj-body})))))
+
+(defn list-products
+  ([] (list-products {}))
+  ([{:keys [page page-size]}]
+   (let [{:keys [clj-body] :as res}
+         (http-get (products-url)
+                   {:query-params (cond-> {}
+                                    page (assoc "page" page)
+                                    page-size (assoc "page_size" page-size))
+                    :oauth-token (access-token)})]
+     (if (http/success? res)
+       (:products clj-body)
+       (throw (ex-info "Unable to list products with PayPal"
+                       {:response clj-body}))))))
+
+(defn get-product
+  [id]
+  (let [{:keys [clj-body] :as res}
+        (http-get (products-url id)
+                  {:oauth-token (access-token)})]
+    (if (http/success? res)
+      clj-body
+      (throw (ex-info "Unable to fetch the product from PayPal"
+                      {:id id
+                       :response clj-body})))))
+
+(defn update-product
+  "Applies JSON Patch ops to a PayPal catalog product. PayPal returns 204 on
+  success, so this returns nil."
+  [id ops]
+  (let [{:keys [clj-body] :as res}
+        (http-patch (products-url id)
+                    {:form-params (mapv ->patch-op ops)
+                     :oauth-token (access-token)})]
+    (when-not (http/success? res)
+      (throw (ex-info "Unable to update the product with PayPal"
+                      {:id id
+                       :ops ops
+                       :response clj-body})))
+    nil))
+
+(defn- plans-url
+  ([] (build-url "v1" "billing" "plans"))
+  ([id] (build-url "v1" "billing" "plans" id)))
+
+(defn- plan-activate-url [id] (build-url "v1" "billing" "plans" id "activate"))
+(defn- plan-deactivate-url [id] (build-url "v1" "billing" "plans" id "deactivate"))
+
+(defn create-plan
+  "Create a PayPal billing plan. Bare decimal :fixed-price values are
+  expanded into {:value \"...\" :currency-code \"USD\"} the same way
+  order line items are, via the shared default-currency logic."
+  [plan]
+  {:pre [(s/valid? ::plan plan)]}
+  (let [pln (postwalk default-currency plan)
+        {:keys [clj-body] :as res}
+        (http-post (plans-url)
+                   {:form-params (jsonify pln)
+                    :oauth-token (access-token)})]
+    (if (http/success? res)
+      clj-body
+      (throw (ex-info "Unable to create the plan with PayPal"
+                      {:plan pln
+                       :response clj-body})))))
+
+(defn list-plans
+  ([] (list-plans {}))
+  ([{:keys [product-id page page-size]}]
+   (let [{:keys [clj-body] :as res}
+         (http-get (plans-url)
+                   {:query-params (cond-> {}
+                                    product-id (assoc "product_id" product-id)
+                                    page (assoc "page" page)
+                                    page-size (assoc "page_size" page-size))
+                    :oauth-token (access-token)})]
+     (if (http/success? res)
+       (:plans clj-body)
+       (throw (ex-info "Unable to list plans with PayPal"
+                       {:response clj-body}))))))
+
+(defn get-plan
+  [id]
+  (let [{:keys [clj-body] :as res}
+        (http-get (plans-url id)
+                  {:oauth-token (access-token)})]
+    (if (http/success? res)
+      clj-body
+      (throw (ex-info "Unable to fetch the plan from PayPal"
+                      {:id id
+                       :response clj-body})))))
+
+(defn update-plan
+  "Applies JSON Patch ops to a PayPal billing plan. PayPal returns 204 on
+  success, so this returns nil."
+  [id ops]
+  (let [{:keys [clj-body] :as res}
+        (http-patch (plans-url id)
+                    {:form-params (mapv ->patch-op ops)
+                     :oauth-token (access-token)})]
+    (when-not (http/success? res)
+      (throw (ex-info "Unable to update the plan with PayPal"
+                      {:id id
+                       :ops ops
+                       :response clj-body})))
+    nil))
+
+(defn activate-plan
+  "PayPal returns 204 on success, so this returns nil."
+  [id]
+  (let [{:keys [clj-body] :as res}
+        (http-post (plan-activate-url id)
+                   {:oauth-token (access-token)})]
+    (when-not (http/success? res)
+      (throw (ex-info "Unable to activate the plan with PayPal"
+                      {:id id
+                       :response clj-body})))
+    nil))
+
+(defn deactivate-plan
+  "PayPal returns 204 on success, so this returns nil."
+  [id]
+  (let [{:keys [clj-body] :as res}
+        (http-post (plan-deactivate-url id)
+                   {:oauth-token (access-token)})]
+    (when-not (http/success? res)
+      (throw (ex-info "Unable to deactivate the plan with PayPal"
+                      {:id id
+                       :response clj-body})))
+    nil))

@@ -1,0 +1,14 @@
+{
+  "total_items": 1,
+  "total_pages": 1,
+  "products": [
+    {
+      "id": "PROD-6XB24663H4094933M",
+      "name": "Video Streaming Service",
+      "description": "Video streaming service",
+      "type": "SERVICE",
+      "create_time": "2026-08-01T10:00:00Z",
+      "update_time": "2026-08-01T10:00:00Z"
+    }
+  ]
+}
