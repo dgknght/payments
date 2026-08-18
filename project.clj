@@ -9,7 +9,7 @@
                  [cheshire "6.2.0"]
                  [clj-http "3.13.1"]
                  [camel-snake-kebab "0.4.3"]
-                 [com.github.dgknght/app-lib "0.3.52"
+                 [com.github.dgknght/app-lib "0.3.55"
                   :exclusions [camel-snake-kebab]]]
   :plugins [[lein-cljsbuild "1.1.8"]
             [lein-doo "0.1.11"]
